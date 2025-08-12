@@ -37,14 +37,12 @@ def train_model(data, out_dir):
     X_train = data["train"].drop(columns=[c for c in data["train"].columns if c.startswith("LABEL")])
     y_train = data["train"]["LABEL0"] if "LABEL0" in data["train"].columns else data["train"].iloc[:, -1]
     
-    X_valid = data["valid"].drop(columns=[c for c in data["valid"].columns if c.startswith("LABEL")])
-    y_valid = data["valid"]["LABEL0"] if "LABEL0" in data["valid"].columns else data["valid"].iloc[:, -1]
-    
     X_test = data["test"].drop(columns=[c for c in data["test"].columns if c.startswith("LABEL")])
     
-    # Train
-    model = LGBModel(num_leaves=64, n_estimators=500, learning_rate=0.03)
-    model.fit(X_train, y_train, X_valid, y_valid)
+    # Train using sklearn-style interface
+    from lightgbm import LGBMRegressor
+    model = LGBMRegressor(num_leaves=64, n_estimators=500, learning_rate=0.03, random_state=42)
+    model.fit(X_train, y_train)
     
     # Predict
     pred = model.predict(X_test)
@@ -53,7 +51,12 @@ def train_model(data, out_dir):
     pred_df = pd.DataFrame(pred, index=X_test.index, columns=["score"])
     pred_df.reset_index().to_csv(os.path.join(out_dir, "predictions.csv"), index=False)
     
+    # Save model
+    import pickle
+    pickle.dump(model, open(os.path.join(out_dir, "lgbm_model.pkl"), "wb"))
+    
     print(f"Saved predictions.csv with {len(pred)} predictions")
+    print(f"Saved lgbm_model.pkl")
 
 def main():
     args = parse_args()
